@@ -1,6 +1,6 @@
-# [Project name]
+# Bid Tracker (나라장터 입찰 공고 추적기)
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A Korean government construction bid (나라장터) tracking dashboard. Lets procurement teams browse active bids, view details, track favorites, and analyze bid data with charts.
 
 ## Run & Operate
 
