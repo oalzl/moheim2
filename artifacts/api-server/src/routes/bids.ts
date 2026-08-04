@@ -8,6 +8,25 @@ const NAARA_API_BASE = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService"
 const ENDPOINT = "/getBidPblancListInfoCnstwk";
 const API_KEY = process.env["NARA_API_KEY"] ?? "";
 
+interface NaraApiBody {
+  items?: RawBidItem[] | { item?: RawBidItem[] };
+  numOfRows?: number;
+  pageNo?: number;
+  totalCount?: number;
+}
+
+interface NaraApiHeader {
+  resultCode?: string;
+  resultMsg?: string;
+}
+
+interface NaraApiResponse {
+  response?: {
+    header?: NaraApiHeader;
+    body?: NaraApiBody;
+  };
+}
+
 interface RawBidItem {
   bidNtceNo?: string;
   bidNtceOrd?: string;
@@ -121,7 +140,7 @@ async function fetchNaraBids(numOfRows: number, pageNo: number): Promise<RawBidI
   try {
     const resp = await fetch(url, { signal: controller.signal });
     if (!resp.ok) throw new Error(`나라장터 API HTTP ${resp.status}`);
-    const data = await resp.json();
+    const data = (await resp.json()) as NaraApiResponse;
     const body = data?.response?.body;
     if (!body) throw new Error("나라장터 API 응답 형식 오류");
     const itemsRaw = body.items;
@@ -183,7 +202,7 @@ router.get("/health", async (_req, res) => {
       if (!ok) {
         detail = `HTTP ${resp.status}`;
       } else {
-        const data = await resp.json();
+        const data = (await resp.json()) as NaraApiResponse;
         const resultCode = data?.response?.header?.resultCode;
         if (resultCode && resultCode !== "00") {
           ok = false;
