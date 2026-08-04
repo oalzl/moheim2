@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Bid Tracker"
+description = "A Korean government bid (나라장터) tracking dashboard. Lets procurement teams browse active bids, view bid details, track favorites, and analyze bid data with charts. Connects to Supabase for data collection and storage."
+version = "1.0.0"
+id = "artifacts/bid-tracker"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22027
+
+[services.development]
+run = "pnpm --filter @workspace/bid-tracker run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bid-tracker", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/bid-tracker/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22027"
+BASE_PATH = "/"
