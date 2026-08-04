@@ -22,6 +22,34 @@ const defaultFilters: BidFilters = {
   sort: '마감순',
 };
 
+// 서울·경기·인천만 표시 (고정)
+const FIXED_REGIONS = ['서울', '경기', '인천'] as const;
+type TargetRegion = (typeof FIXED_REGIONS)[number];
+
+const REGION_STYLE: Record<TargetRegion, string> = {
+  서울: 'bg-blue-100 text-blue-700',
+  경기: 'bg-green-100 text-green-700',
+  인천: 'bg-purple-100 text-purple-700',
+};
+
+function detectRegion(regionRstrn: string | null): TargetRegion | null {
+  if (!regionRstrn) return null;
+  for (const r of FIXED_REGIONS) {
+    if (regionRstrn.includes(r)) return r;
+  }
+  return null;
+}
+
+function RegionBadge({ regionRstrn }: { regionRstrn: string | null }) {
+  const region = detectRegion(regionRstrn);
+  if (!region) return <span className="text-slate-400">-</span>;
+  return (
+    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${REGION_STYLE[region]}`}>
+      {region}
+    </span>
+  );
+}
+
 function getBidStatus(bid: Bid): BidStatus {
   const days = daysUntil(bid.bid_clse_dt);
   if (days < 0) return '마감';
@@ -78,9 +106,6 @@ export function BidList({ onSelectBid }: BidListProps) {
         ) {
           return false;
         }
-      }
-      if (filters.region && filters.region !== '전체') {
-        if (!bid.region_rstrn?.includes(filters.region)) return false;
       }
       if (filters.minAmount && (bid.asgn_bdgt_amt ?? 0) < parseInt(filters.minAmount)) return false;
       if (filters.maxAmount && (bid.asgn_bdgt_amt ?? 0) > parseInt(filters.maxAmount)) return false;
@@ -148,16 +173,6 @@ export function BidList({ onSelectBid }: BidListProps) {
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
               placeholder="공고명 또는 발주기관"
-              className="input-base"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500">지역</label>
-            <input
-              type="text"
-              value={filters.region}
-              onChange={(e) => setFilters({ ...filters, region: e.target.value })}
-              placeholder="예: 서울, 경기"
               className="input-base"
             />
           </div>
@@ -303,7 +318,7 @@ export function BidList({ onSelectBid }: BidListProps) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-600">{orDash(bid.ntce_instt_nm)}</td>
-                    <td className="px-4 py-3 text-slate-600">{orDash(bid.region_rstrn)}</td>
+                    <td className="px-4 py-3"><RegionBadge regionRstrn={bid.region_rstrn} /></td>
                     <td className="px-4 py-3 text-right font-medium text-slate-700">
                       {formatCurrencyWon(bid.asgn_bdgt_amt)}
                     </td>

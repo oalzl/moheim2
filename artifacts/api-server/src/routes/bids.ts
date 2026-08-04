@@ -76,7 +76,7 @@ function mapBidItem(raw: RawBidItem) {
     cnstwk_se: toText(raw.cnstwkSe) ?? null,
     cnstwk_type_of_bsns: toText(raw.cnstwkTypeOfBsns) ?? null,
     license_req: toText(raw.licenseReq) ?? null,
-    region_rstrn: toText(raw.cnstwkDtlRstrnArea) ?? null,
+    region_rstrn: toText(raw.cnstrtsiteRgnNm) ?? null,
     asgn_bdgt_amt: toNumber(raw.asgnBdgtAmt) ?? null,
     presmpt_prce: toNumber(raw.presmptPrce) ?? null,
     ntce_dt: toDate(raw.ntceDt) ?? null,
@@ -150,7 +150,13 @@ async function fetchAllRelevantBids(): Promise<{ bids: MappedBid[]; collected: n
     if (items.length < 100) break;
   }
   const mapped = allItems.map(mapBidItem);
-  const relevant = mapped.filter((b) => b.relevance_score >= 5 && b.bid_ntce_no);
+  const TARGET_REGIONS = ['서울', '경기', '인천'];
+  const relevant = mapped.filter(
+    (b) =>
+      b.relevance_score >= 5 &&
+      b.bid_ntce_no &&
+      TARGET_REGIONS.some((r) => b.region_rstrn?.includes(r)),
+  );
   return { bids: relevant, collected: allItems.length };
 }
 
