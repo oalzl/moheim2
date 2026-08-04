@@ -90,15 +90,30 @@ function mapBidItem(raw: RawBidItem) {
   };
 }
 
+function getDateRange(): { bgnDt: string; endDt: string } {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}0000`;
+  const end = new Date(now);
+  const begin = new Date(now);
+  begin.setDate(begin.getDate() - 30); // 최근 30일
+  return { bgnDt: fmt(begin), endDt: fmt(end) };
+}
+
 async function fetchNaraBids(numOfRows: number, pageNo: number): Promise<RawBidItem[]> {
+  // serviceKey는 공공데이터포털에서 이미 인코딩된 값으로 발급되므로
+  // URLSearchParams에 넣으면 이중 인코딩됩니다. 직접 붙입니다.
+  const { bgnDt, endDt } = getDateRange();
   const params = new URLSearchParams({
-    serviceKey: API_KEY,
     numOfRows: String(numOfRows),
     pageNo: String(pageNo),
     inqryDiv: "1",
+    inqryBgnDt: bgnDt,
+    inqryEndDt: endDt,
     type: "json",
   });
-  const url = `${NAARA_API_BASE}${ENDPOINT}?${params.toString()}`;
+  const url = `${NAARA_API_BASE}${ENDPOINT}?serviceKey=${API_KEY}&${params.toString()}`;
   logger.info({ url: url.replace(API_KEY, "***") }, "[bids] Fetching nara API");
 
   const controller = new AbortController();
@@ -142,14 +157,16 @@ async function fetchAllRelevantBids(): Promise<{ bids: MappedBid[]; collected: n
 // GET /api/bids/health
 router.get("/health", async (_req, res) => {
   try {
+    const { bgnDt, endDt } = getDateRange();
     const params = new URLSearchParams({
-      serviceKey: API_KEY,
       numOfRows: "1",
       pageNo: "1",
       inqryDiv: "1",
+      inqryBgnDt: bgnDt,
+      inqryEndDt: endDt,
       type: "json",
     });
-    const url = `${NAARA_API_BASE}${ENDPOINT}?${params.toString()}`;
+    const url = `${NAARA_API_BASE}${ENDPOINT}?serviceKey=${API_KEY}&${params.toString()}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     let ok = false;

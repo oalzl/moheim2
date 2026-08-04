@@ -1,23 +1,24 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { ApiHealthStatus, Bid, FavoriteBid } from '@/types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-const functionUrl = `${supabaseUrl}/functions/v1/bids-api`;
-
-function authHeaders(): HeadersInit {
-  return {
-    Authorization: `Bearer ${supabaseAnonKey}`,
-    'Content-Type': 'application/json',
-  };
+// ── Supabase (즐겨찾기 전용) ─────────────────────────────────────────
+// 환경변수가 없으면 즐겨찾기 기능만 비활성화되고 앱은 정상 동작합니다.
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (_supabase) return _supabase;
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error('Supabase 환경변수(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)가 설정되지 않았습니다.');
+  _supabase = createClient(url, key);
+  return _supabase;
 }
+
+// ── 입찰 공고 API (로컬 Express 서버 경유) ──────────────────────────
+const BIDS_API = '/api/bids';
 
 export async function fetchHealth(): Promise<{ status: ApiHealthStatus; message: string }> {
   try {
-    const resp = await fetch(`${functionUrl}/health`, { headers: authHeaders() });
+    const resp = await fetch(`${BIDS_API}/health`);
     if (!resp.ok) return { status: 'error', message: `서버 오류 (${resp.status})` };
     const data = await resp.json();
     return { status: data.status as ApiHealthStatus, message: data.message ?? '' };
@@ -27,7 +28,7 @@ export async function fetchHealth(): Promise<{ status: ApiHealthStatus; message:
 }
 
 export async function collectBids(): Promise<{ collected: number; stored: number; relevant: number }> {
-  const resp = await fetch(`${functionUrl}/collect`, { headers: authHeaders() });
+  const resp = await fetch(`${BIDS_API}/collect`, { method: 'POST' });
   if (!resp.ok) {
     const data = await resp.json().catch(() => ({}));
     throw new Error(data.error ?? '데이터 수집에 실패했습니다.');
@@ -35,8 +36,24 @@ export async function collectBids(): Promise<{ collected: number; stored: number
   return resp.json();
 }
 
-export async function fetchBids(): Promise<Bid[]> {
-  const resp = await fetch(`${functionUrl}/bids`, { headers: authHeaders() });
+export async function fetchBids(params?: {
+  search?: string;
+  region?: string;
+  agency?: string;
+  minAmount?: string;
+  maxAmount?: string;
+  limit?: number;
+}): Promise<Bid[]> {
+  const qs = new URLSearchParams();
+  if (params?.search) qs.set('search', params.search);
+  if (params?.region) qs.set('region', params.region);
+  if (params?.agency) qs.set('agency', params.agency);
+  if (params?.minAmount) qs.set('minAmount', params.minAmount);
+  if (params?.maxAmount) qs.set('maxAmount', params.maxAmount);
+  if (params?.limit) qs.set('limit', String(params.limit));
+
+  const url = `${BIDS_API}${qs.toString() ? `?${qs.toString()}` : ''}`;
+  const resp = await fetch(url);
   if (!resp.ok) {
     const data = await resp.json().catch(() => ({}));
     throw new Error(data.error ?? '공고 조회에 실패했습니다.');
@@ -47,8 +64,7 @@ export async function fetchBids(): Promise<Bid[]> {
 
 export async function fetchBidDetail(bidNtceNo: string, bidNtceOrd: string): Promise<Bid | null> {
   const resp = await fetch(
-    `${functionUrl}/bids/${encodeURIComponent(bidNtceNo)}/${encodeURIComponent(bidNtceOrd)}`,
-    { headers: authHeaders() },
+    `${BIDS_API}/${encodeURIComponent(bidNtceNo)}/${encodeURIComponent(bidNtceOrd)}`,
   );
   if (!resp.ok) {
     if (resp.status === 404) return null;
@@ -59,8 +75,10 @@ export async function fetchBidDetail(bidNtceNo: string, bidNtceOrd: string): Pro
   return data.bid as Bid;
 }
 
+// ── 즐겨찾기 API (Supabase 직접 사용) ────────────────────────────────
+
 export async function fetchFavorites(): Promise<FavoriteBid[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('favorites')
     .select('*')
     .eq('is_favorite', true)
@@ -70,14 +88,14 @@ export async function fetchFavorites(): Promise<FavoriteBid[]> {
 }
 
 export async function addFavorite(bidNtceNo: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await getSupabase()
     .from('favorites')
     .upsert({ bid_ntce_no: bidNtceNo, is_favorite: true }, { onConflict: 'bid_ntce_no' });
   if (error) throw new Error(error.message);
 }
 
 export async function removeFavorite(bidNtceNo: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await getSupabase()
     .from('favorites')
     .delete()
     .eq('bid_ntce_no', bidNtceNo);
