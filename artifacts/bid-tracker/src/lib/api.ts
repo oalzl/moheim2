@@ -14,7 +14,10 @@ function getSupabase(): SupabaseClient {
 }
 
 // ── 입찰 공고 API (로컬 Express 서버 경유) ──────────────────────────
-const BIDS_API = '/api/bids';
+// VITE_API_BASE_URL: Vercel 배포 시 API 서버의 도메인을 설정 (예: https://api.example.com)
+// 로컬/Replit 개발 시에는 빈 문자열로 두어 상대 경로 /api/bids 를 사용합니다.
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+const BIDS_API = `${API_BASE}/api/bids`;
 
 export async function fetchHealth(): Promise<{ status: ApiHealthStatus; message: string }> {
   try {

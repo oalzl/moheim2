@@ -27,7 +27,7 @@ export default defineConfig(async ({ command }) => {
     base: basePath,
     plugins: [
       react(),
-      runtimeErrorOverlay(),
+      ...(!isBuild ? [runtimeErrorOverlay()] : []),
       ...(process.env.NODE_ENV !== 'production' &&
       process.env.REPL_ID !== undefined
         ? [
