@@ -1,5 +1,8 @@
 {
   "version": 2,
   "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "cd ../.. && pnpm run typecheck:libs"
+  "buildCommand": "cd ../.. && pnpm run typecheck:libs",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index" }
+  ]
 }
